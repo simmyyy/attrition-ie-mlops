@@ -1,0 +1,40 @@
+name: Train Model
+
+on:
+  push:
+    paths:
+      - "attrition/**"
+      - ".github/workflows/train.yml"
+  workflow_dispatch:
+
+jobs:
+  train:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install training dependencies
+        working-directory: attrition
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-train.txt
+
+      - name: Run training script
+        working-directory: attrition
+        run: |
+          python Preprocessing_Modelling.py
+
+      - name: Upload model artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: attrition-model
+          path: |
+            attrition/xgb_attrition_pipeline.joblib
+            attrition/metrics.json

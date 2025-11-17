@@ -1,0 +1,60 @@
+name: Build, Test and Push Docker Image
+
+on:
+  workflow_run:
+    workflows: ["Train Model"]
+    types:
+      - completed
+
+jobs:
+  build-test-push:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      packages: write
+      actions: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download model artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: attrition-model
+          path: attrition
+
+      - name: List downloaded files
+        run: ls -R attrition
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install API + test dependencies
+        working-directory: attrition
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-api.txt pytest
+
+      - name: Run unit tests
+        working-directory: attrition
+        run: pytest -q
+
+      - name: Log in to GitHub Container Registry
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+      - name: Build Docker image
+        working-directory: attrition
+        run: |
+          IMAGE_NAME=ghcr.io/${{ github.repository }}/attrition-api:latest
+          docker build -t $IMAGE_NAME .
+
+      - name: Push Docker image
+        working-directory: attrition
+        run: |
+          IMAGE_NAME=ghcr.io/${{ github.repository }}/attrition-api:latest
+          docker push $IMAGE_NAME
