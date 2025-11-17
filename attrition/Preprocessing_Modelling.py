@@ -57,7 +57,7 @@ def build_common_frame(ibm: pd.DataFrame, industry: pd.DataFrame) -> pd.DataFram
     ibm_common = ibm[[c for c in common_cols if c in ibm.columns]].copy()
     industry_common = industry[[c for c in common_cols if c in industry.columns]].copy()
 
-    # Normalise Attrition text and create AttritionFlag
+    # Normalise Attrition text and create AttritionFlag some comment
     for df in (ibm_common, industry_common):
         if "Attrition" in df.columns:
             df["Attrition"] = df["Attrition"].astype(str).str.strip().str.title()
