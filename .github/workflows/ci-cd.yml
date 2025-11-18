@@ -42,6 +42,11 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt pytest
 
+      - name: Lint with flake8
+        working-directory: attrition
+        run: |
+          flake8 .
+
       - name: Run unit tests
         working-directory: attrition
         run: pytest -q

@@ -61,10 +61,11 @@ def test_predict_row():
 
 
 def test_predict_csv():
-    csv_str = """Age,JobLevel,MonthlyIncome,DistanceFromHome,Education,JobSatisfaction,WorkLifeBalance,PerformanceRating,YearsAtCompany,Gender,OverTime,MaritalStatus,Source
-35,2,5000,10,3,3,3,3,5,Male,Yes,Single,Company
-40,3,7000,5,4,4,2,3,10,Female,No,Married,Industry
-"""
+    csv_str = """Age,JobLevel,MonthlyIncome,DistanceFromHome,Education,JobSatisfaction,
+    WorkLifeBalance,PerformanceRating,YearsAtCompany,Gender,OverTime,MaritalStatus,Source
+    35,2,5000,10,3,3,3,3,5,Male,Yes,Single,Company
+    40,3,7000,5,4,4,2,3,10,Female,No,Married,Industry
+    """
     df = pd.read_csv(StringIO(csv_str))
     files = {"file": ("test.csv", df.to_csv(index=False), "text/csv")}
 
