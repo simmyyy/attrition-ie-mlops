@@ -1,0 +1,7 @@
+services:
+  - type: web
+    name: attrition-api
+    env: docker
+    image: ghcr.io/simmyyy/attrition-ie-mlops/attrition-api:latest
+    healthCheckPath: /health
+    autoDeploy: true
