@@ -443,7 +443,7 @@ def train_and_evaluate():
         remainder="drop",
     )
 
-    # XGB model – parameters from config
+    # XGBoost model – parameters from config
     xgb_model = XGBClassifier(
         objective=MODEL_CFG.get("objective", "binary:logistic"),
         eval_metric=MODEL_CFG.get("eval_metric", "auc"),
