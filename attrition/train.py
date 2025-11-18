@@ -32,8 +32,8 @@ from mlflow import sklearn as mlflow_sklearn
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-IBM_PATH = "IBM_HR-Employee-Attrition.csv"
-INDUSTRY_PATH = "Industry Dataset.csv"
+IBM_PATH = "../IBM_HR-Employee-Attrition.csv"
+INDUSTRY_PATH = "../Industry Dataset.csv"
 MODEL_PATH = "xgb_attrition_pipeline.joblib"
 METRICS_PATH = "metrics.json"
 
@@ -52,9 +52,6 @@ def read_raw_data(
     return ibm, industry
 
 
-# ------------------------------------------------------------------------
-# Full preprocessing exactly as in the shared notebook
-# ------------------------------------------------------------------------
 def build_dataset() -> Tuple[pd.DataFrame, pd.Series]:
     """
     Reproduce the full preprocessing from the notebook:
@@ -332,9 +329,6 @@ def build_dataset() -> Tuple[pd.DataFrame, pd.Series]:
     return X, y, df_all
 
 
-# ------------------------------------------------------------------------
-# Plot helpers for MLflow
-# ------------------------------------------------------------------------
 def create_confusion_matrix_figure(
     y_true, y_pred, title="Confusion Matrix for XGBoost"
 ):
