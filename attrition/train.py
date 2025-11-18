@@ -1,6 +1,7 @@
 import os
 import json
-from typing import Tuple, Dict
+from pathlib import Path
+from typing import Tuple
 
 import pandas as pd
 from joblib import dump
@@ -32,27 +33,63 @@ from mlflow import sklearn as mlflow_sklearn
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-IBM_PATH = "../data/IBM_HR-Employee-Attrition.csv"
-INDUSTRY_PATH = "../data/Industry Dataset.csv"
-MODEL_PATH = "xgb_attrition_pipeline.joblib"
-METRICS_PATH = "metrics.json"
+# Config (PyYAML)
+import yaml
+
+
+# ------------------------------------------------------------------------
+# Config loading
+# ------------------------------------------------------------------------
+
+# repo root = katalog o poziom wyżej niż attrition/
+ROOT_DIR = Path(__file__).resolve().parent.parent
+
+DEFAULT_CONFIG_PATH = ROOT_DIR / "configs" / "train.yaml"
+
+
+def load_config() -> dict:
+    """
+    Load training configuration from YAML.
+
+    Możesz nadpisać ścieżkę przez env:
+        TRAIN_CONFIG_PATH=configs/other.yaml
+    """
+    cfg_path = Path(os.getenv("TRAIN_CONFIG_PATH", DEFAULT_CONFIG_PATH))
+    if not cfg_path.exists():
+        raise FileNotFoundError(f"Config file not found: {cfg_path}")
+    with cfg_path.open("r") as f:
+        return yaml.safe_load(f)
+
+
+CFG = load_config()
+
+DATA_CFG = CFG["data"]
+ARTIFACTS_CFG = CFG["artifacts"]
+TRAIN_CFG = CFG["training"]
+MODEL_CFG = CFG["model"]
+MLFLOW_CFG = CFG.get("mlflow", {})
+
+# ścieżki z configa → absolutne
+IBM_PATH = ROOT_DIR / DATA_CFG["ibm_path"]
+INDUSTRY_PATH = ROOT_DIR / DATA_CFG["industry_path"]
+MODEL_PATH = ROOT_DIR / ARTIFACTS_CFG["model_path"]
+METRICS_PATH = ROOT_DIR / ARTIFACTS_CFG["metrics_path"]
 
 
 # ------------------------------------------------------------------------
 # Data loading
 # ------------------------------------------------------------------------
-def read_raw_data(
-    ibm_path: str = IBM_PATH, industry_path: str = INDUSTRY_PATH
-) -> Tuple[pd.DataFrame, pd.DataFrame]:
+def read_raw_data() -> Tuple[pd.DataFrame, pd.DataFrame]:
     """
     Read raw CSV files for IBM and Industry datasets.
+    Paths come from configs/train.yaml.
     """
-    ibm = pd.read_csv(ibm_path)
-    industry = pd.read_csv(industry_path)
+    ibm = pd.read_csv(IBM_PATH)
+    industry = pd.read_csv(INDUSTRY_PATH)
     return ibm, industry
 
 
-def build_dataset() -> Tuple[pd.DataFrame, pd.Series]:
+def build_dataset() -> Tuple[pd.DataFrame, pd.Series, pd.DataFrame]:
     """
     Reproduce the full preprocessing from the notebook:
 
@@ -66,7 +103,7 @@ def build_dataset() -> Tuple[pd.DataFrame, pd.Series]:
     - Create AttritionFlag and define X, y.
 
     Returns:
-        X (DataFrame), y (Series)
+        X (DataFrame), y (Series), df_all (merged preprocessed data)
     """
     ibm, industry = read_raw_data()
 
@@ -364,9 +401,9 @@ def train_and_evaluate():
     X_train, X_test, y_train, y_test = train_test_split(
         X,
         y,
-        test_size=0.2,  # 80% train, 20% test
-        stratify=y,
-        random_state=42,
+        test_size=TRAIN_CFG.get("test_size", 0.2),  # 80% train, 20% test
+        stratify=y if TRAIN_CFG.get("stratify", True) else None,
+        random_state=TRAIN_CFG.get("random_state", 42),
     )
 
     print("Train shape:", X_train.shape, "| Test shape:", X_test.shape)
@@ -415,16 +452,16 @@ def train_and_evaluate():
         remainder="drop",
     )
 
-    # XGB model as in notebook
+    # XGB model – parametry z configa
     xgb_model = XGBClassifier(
-        objective="binary:logistic",
-        eval_metric="auc",
-        random_state=42,
-        n_estimators=400,
-        learning_rate=0.05,
-        max_depth=5,
-        subsample=0.8,
-        colsample_bytree=0.8,
+        objective=MODEL_CFG.get("objective", "binary:logistic"),
+        eval_metric=MODEL_CFG.get("eval_metric", "auc"),
+        random_state=TRAIN_CFG.get("random_state", 42),
+        n_estimators=MODEL_CFG.get("n_estimators", 400),
+        learning_rate=MODEL_CFG.get("learning_rate", 0.05),
+        max_depth=MODEL_CFG.get("max_depth", 5),
+        subsample=MODEL_CFG.get("subsample", 0.8),
+        colsample_bytree=MODEL_CFG.get("colsample_bytree", 0.8),
         scale_pos_weight=(y == 0).sum() / max(1, (y == 1).sum()),
         n_jobs=-1,
     )
@@ -451,7 +488,7 @@ def train_and_evaluate():
     # Save model
     dump(pipeline, MODEL_PATH)
 
-    # Evaluation on test a
+    # Evaluation on test
     y_proba = pipeline.predict_proba(X_test)[:, 1]
     y_pred = pipeline.predict(X_test)
 
@@ -486,7 +523,8 @@ def train_and_evaluate():
         "n_test": int(len(X_test)),
     }
 
-    with open(METRICS_PATH, "w") as f:
+    METRICS_PATH.parent.mkdir(parents=True, exist_ok=True)
+    with METRICS_PATH.open("w") as f:
         json.dump(metrics, f, indent=2)
 
     return pipeline, metrics, y_test, y_pred, y_proba
@@ -496,14 +534,28 @@ def train_and_evaluate():
 # Main with MLflow logging
 # ------------------------------------------------------------------------
 def main():
-    tracking_uri = os.getenv("MLFLOW_TRACKING_URI", "file:./mlruns")
-    experiment_name = os.getenv("MLFLOW_EXPERIMENT_NAME", "attrition-xgb")
+    enabled = MLFLOW_CFG.get("enabled", True)
+
+    if not enabled:
+        # jeśli ktoś wyłączy MLflow w configu -> odpal tylko trening
+        train_and_evaluate()
+        return
+
+    tracking_uri = os.getenv(
+        "MLFLOW_TRACKING_URI", MLFLOW_CFG.get("tracking_uri", "file:./mlruns")
+    )
+    experiment_name = os.getenv(
+        "MLFLOW_EXPERIMENT_NAME", MLFLOW_CFG.get("experiment_name", "attrition-xgb")
+    )
+    run_name = MLFLOW_CFG.get("run_name", "xgb_merged_notebooks_pipeline")
+    log_plots = MLFLOW_CFG.get("log_plots", True)
+    registered_model_name = MLFLOW_CFG.get("registered_model_name", "attrition_xgb")
 
     mlflow.set_tracking_uri(tracking_uri)
     mlflow.set_experiment(experiment_name)
 
     with mlflow.start_run(
-        run_name="xgb_merged_notebooks_pipeline",
+        run_name=run_name,
         tags={
             "stage": "training",
             "notebook": "Merged_Preprocessing_Modelling",
@@ -530,23 +582,24 @@ def main():
             mlflow.log_metric(k, v)
 
         # Log artifacts: model + metrics JSON
-        mlflow.log_artifact(MODEL_PATH, artifact_path="model")
-        mlflow.log_artifact(METRICS_PATH, artifact_path="metrics")
+        mlflow.log_artifact(str(MODEL_PATH), artifact_path="model")
+        mlflow.log_artifact(str(METRICS_PATH), artifact_path="metrics")
 
         # Confusion matrix & PR curve to MLflow
-        fig_cm = create_confusion_matrix_figure(y_test, y_pred)
-        mlflow.log_figure(fig_cm, "plots/confusion_matrix.png")
-        plt.close(fig_cm)
+        if log_plots:
+            fig_cm = create_confusion_matrix_figure(y_test, y_pred)
+            mlflow.log_figure(fig_cm, "plots/confusion_matrix.png")
+            plt.close(fig_cm)
 
-        fig_pr = create_pr_curve_figure(y_test, y_proba)
-        mlflow.log_figure(fig_pr, "plots/pr_curve.png")
-        plt.close(fig_pr)
+            fig_pr = create_pr_curve_figure(y_test, y_proba)
+            mlflow.log_figure(fig_pr, "plots/pr_curve.png")
+            plt.close(fig_pr)
 
         # Also log as MLflow model
         mlflow_sklearn.log_model(
             sk_model=pipeline,
             artifact_path="xgb-pipeline",
-            registered_model_name="attrition_xgb",
+            registered_model_name=registered_model_name,
         )
 
         print("Training finished. Metrics:")
