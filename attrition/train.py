@@ -32,8 +32,8 @@ from mlflow import sklearn as mlflow_sklearn
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-IBM_PATH = "../IBM_HR-Employee-Attrition.csv"
-INDUSTRY_PATH = "../Industry Dataset.csv"
+IBM_PATH = "../data/IBM_HR-Employee-Attrition.csv"
+INDUSTRY_PATH = "../data/Industry Dataset.csv"
 MODEL_PATH = "xgb_attrition_pipeline.joblib"
 METRICS_PATH = "metrics.json"
 
