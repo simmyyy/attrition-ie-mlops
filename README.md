@@ -26,9 +26,25 @@ Key steps:
 
 ## Local setup
 
+Clone repo to local environment and then execute in main directory
+```
+pip install -r requirements.txt
+```
+
+Once you have all requirements, go to attrition directory and execute python file:
+```
+cd attrition
+python train.py
+```
+
 After executing train.py script, we can start MLFlow instance and see results:
 ```
 mlflow ui --backend-store-uri mlruns --port 5000
+```
+
+You can check results in your browser:
+```
+http://127.0.0.1:5000/
 ```
 
 Executing unit tests:
@@ -42,6 +58,9 @@ Building docker image:
 docker build -t attrition-api:latest .
 docker run -p 8000:8000 attrition-api:latest
 ```
+
+Github actions:
+https://github.com/simmyyy/attrition-ie-mlops/actions
 
 API in render.com:
 ```
