@@ -1,22 +1,31 @@
-# 06-cicd/test_app.py
-from fastapi.testclient import TestClient
 import os
-import pandas as pd
 from io import StringIO
+
+import pandas as pd
+from fastapi.testclient import TestClient
 
 from app import app, MODEL_PATH
 
-client = TestClient(app)
-
 
 def test_model_file_exists():
-    assert os.path.exists(MODEL_PATH)
+    # Model should be trained and saved before running tests
+    assert os.path.exists(MODEL_PATH), f"Model file not found at {MODEL_PATH}"
 
 
 def test_health():
-    res = client.get("/health")
-    assert res.status_code == 200
-    assert res.json()["status"] == "ok"
+    # Używamy TestClient jako context manager -> odpala lifespan (startup/shutdown)
+    with TestClient(app) as client:
+        res = client.get("/health")
+        assert res.status_code == 200
+
+        data = res.json()
+        # New health response: {"status": "ok" | "degraded", "model_loaded": bool}
+        assert "status" in data
+        assert "model_loaded" in data
+
+        # W normalnym flow (po train.py) model powinien być załadowany
+        assert data["model_loaded"] is True
+        assert data["status"] == "ok"
 
 
 def test_predict_row():
@@ -35,11 +44,20 @@ def test_predict_row():
         "MaritalStatus": "Single",
         "Source": "Company",
     }
-    res = client.post("/predict-row", json=payload)
-    assert res.status_code == 200
-    data = res.json()
-    assert "attrition_score" in data
-    assert 0.0 <= data["attrition_score"] <= 1.0
+
+    with TestClient(app) as client:
+        res = client.post("/predict-row", json=payload)
+        assert res.status_code == 200
+
+        data = res.json()
+        # Response model: attrition_score, prediction, threshold, model_version
+        assert "attrition_score" in data
+        assert "prediction" in data
+        assert "threshold" in data
+
+        assert isinstance(data["attrition_score"], (float, int))
+        assert 0.0 <= data["attrition_score"] <= 1.0
+        assert data["prediction"] in (0, 1)
 
 
 def test_predict_csv():
@@ -49,8 +67,18 @@ def test_predict_csv():
 """
     df = pd.read_csv(StringIO(csv_str))
     files = {"file": ("test.csv", df.to_csv(index=False), "text/csv")}
-    res = client.post("/predict-csv", files=files)
-    assert res.status_code == 200
-    data = res.json()
-    assert data["n_rows"] == 2
-    assert len(data["attrition_scores"]) == 2
+
+    with TestClient(app) as client:
+        res = client.post("/predict-csv", files=files)
+        assert res.status_code == 200
+
+        data = res.json()
+        assert "n_rows" in data
+        assert "attrition_scores" in data
+
+        assert data["n_rows"] == 2
+        assert len(data["attrition_scores"]) == 2
+
+        for s in data["attrition_scores"]:
+            val = float(s)
+            assert 0.0 <= val <= 1.0
