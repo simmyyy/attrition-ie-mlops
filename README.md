@@ -17,9 +17,10 @@ Key steps:
 
 - Clean & harmonise both datasets (text normalisation, mapping ordinal variables, encoding categoricals).
 - Standardise numeric features.
-- Train an **XGBoost** classifier with class-imbalance handling (`scale_pos_weight`).
-- Evaluate using **ROC-AUC, Precision, Recall, F1**, Confusion Matrix and PR-curve.
+- Train an **XGBoost** classifier.
+- Evaluate using **ROC-AUC, Precision, Recall, F1**, Confusion Matrix and PR-curve, sending to MLFlow
 - Serve predictions via **FastAPI** (single row & CSV).
+- CI/CD deployment to render.com
 
 ---
 
@@ -74,9 +75,10 @@ https://attrition-api-latest.onrender.com/docs#/
 
 ```text
 .
-├── attrition/
+├── .github/workflows/
 │   ├── ci-cd.yml                       # github workflow definition for ci-cd part
 │   ├── train.yml                       # github workflow definition for training
+│
 ├── attrition/
 │   ├── app.py                          # FastAPI application (single-row & CSV prediction)
 │   ├── Dockerfile                      # Image for serving API

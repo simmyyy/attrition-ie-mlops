@@ -37,11 +37,7 @@ import seaborn as sns
 import yaml
 
 
-# ------------------------------------------------------------------------
 # Config loading
-# ------------------------------------------------------------------------
-
-# repo root = katalog o poziom wyżej niż attrition/
 ROOT_DIR = Path(__file__).resolve().parent.parent
 
 DEFAULT_CONFIG_PATH = ROOT_DIR / "configs" / "train.yaml"
@@ -69,16 +65,13 @@ TRAIN_CFG = CFG["training"]
 MODEL_CFG = CFG["model"]
 MLFLOW_CFG = CFG.get("mlflow", {})
 
-# ścieżki z configa → absolutne
 IBM_PATH = ROOT_DIR / DATA_CFG["ibm_path"]
 INDUSTRY_PATH = ROOT_DIR / DATA_CFG["industry_path"]
 MODEL_PATH = ROOT_DIR / ARTIFACTS_CFG["model_path"]
 METRICS_PATH = ROOT_DIR / ARTIFACTS_CFG["metrics_path"]
 
 
-# ------------------------------------------------------------------------
 # Data loading
-# ------------------------------------------------------------------------
 def read_raw_data() -> Tuple[pd.DataFrame, pd.DataFrame]:
     """
     Read raw CSV files for IBM and Industry datasets.
@@ -391,9 +384,7 @@ def create_pr_curve_figure(y_true, y_proba, title="Precision–Recall Curve"):
     return fig
 
 
-# ------------------------------------------------------------------------
-# Training + evaluation (matching notebook, plus MLflow hooks)
-# ------------------------------------------------------------------------
+# Training + evaluation + MLflow hooks
 def train_and_evaluate():
     X, y, df_all = build_dataset()
 
@@ -452,7 +443,7 @@ def train_and_evaluate():
         remainder="drop",
     )
 
-    # XGB model – parametry z configa
+    # XGB model – parameters from config
     xgb_model = XGBClassifier(
         objective=MODEL_CFG.get("objective", "binary:logistic"),
         eval_metric=MODEL_CFG.get("eval_metric", "auc"),
@@ -530,14 +521,12 @@ def train_and_evaluate():
     return pipeline, metrics, y_test, y_pred, y_proba
 
 
-# ------------------------------------------------------------------------
 # Main with MLflow logging
-# ------------------------------------------------------------------------
 def main():
     enabled = MLFLOW_CFG.get("enabled", True)
 
     if not enabled:
-        # jeśli ktoś wyłączy MLflow w configu -> odpal tylko trening
+        # if MLFlow disabled, run training and evaluation and then exit
         train_and_evaluate()
         return
 
