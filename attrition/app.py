@@ -1,4 +1,3 @@
-# app.py
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
@@ -114,7 +113,6 @@ async def predict_row(row: AttritionRow):
         proba = app.state.model.predict_proba(df)[0, 1]
         pred = int(proba >= 0.5)
     except Exception as e:
-        # typowy błąd to niezgodność kolumn / typów
         raise HTTPException(status_code=400, detail=f"Prediction failed: {e}")
 
     return PredictionResponse(
@@ -137,7 +135,6 @@ async def predict_csv(file: UploadFile = File(...)):
         contents = await file.read()
         df = pd.read_csv(pd.io.common.BytesIO(contents))
 
-        # prosta walidacja: brakujące kolumny
         expected_cols = [
             "Age",
             "JobLevel",
