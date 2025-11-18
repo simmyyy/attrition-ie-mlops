@@ -3,7 +3,6 @@ from __future__ import annotations
 
 from contextlib import asynccontextmanager
 from enum import Enum
-from typing import List
 
 import os
 import pandas as pd
@@ -15,16 +14,12 @@ from joblib import load
 MODEL_PATH = "xgb_attrition_pipeline.joblib"
 
 
-# ==== Pydantic models ====
-
-
 class SourceEnum(str, Enum):
     company = "Company"
     industry = "Industry"
 
 
 class AttritionRow(BaseModel):
-    # proste, ale sensowne constrainty
     Age: float = Field(..., ge=18, le=80, description="Age in years (18-80)")
     JobLevel: int = Field(..., ge=1, le=5, description="Job level (1-5)")
     MonthlyIncome: float = Field(..., gt=0, description="Monthly income > 0")
@@ -88,7 +83,6 @@ async def lifespan(app: FastAPI):
 
     app.state.model = model
     yield
-    # tutaj można dodać cleanup, gdyby był potrzebny
 
 
 app = FastAPI(
@@ -127,7 +121,7 @@ async def predict_row(row: AttritionRow):
         attrition_score=float(proba),
         prediction=pred,
         threshold=0.5,
-        model_version="unknown",
+        model_version="attrition-xgb",
     )
 
 
