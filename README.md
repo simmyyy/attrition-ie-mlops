@@ -115,4 +115,5 @@ https://attrition-api-latest.onrender.com/docs#/
 │
 ├── .gitignore
 ├── architecture_diagram.png
-└── README.md
+├── README.md
+└── render.yaml                         # deployment manifest for render.com
