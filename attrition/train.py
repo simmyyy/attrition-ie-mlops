@@ -451,7 +451,7 @@ def train_and_evaluate():
     # Save model
     dump(pipeline, MODEL_PATH)
 
-    # Evaluation on test
+    # Evaluation on test a
     y_proba = pipeline.predict_proba(X_test)[:, 1]
     y_pred = pipeline.predict(X_test)
 
