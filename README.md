@@ -2,8 +2,6 @@
 
 Production-style ML pipeline for predicting **employee attrition** (who is likely to leave the company), built as part of the IE University MLOps course.
 
-We go from **raw CSVs → preprocessing → XGBoost training → MLflow tracking → FastAPI service → Docker → Render deployment**.
-
 ---
 
 ## Problem Overview
@@ -64,24 +62,36 @@ https://attrition-api-latest.onrender.com/docs#/
 
 ---
 
+<p align="center">
+  <img src="./architecture_diagram.png"
+       alt="Attrition MLOps Pipeline"
+       width="1400">
+</p>
+
+---
+
 ## Repository Structure
 
 ```text
 .
 ├── attrition/
-│   ├── app.py                     # FastAPI application (single-row & CSV prediction)
-│   ├── Dockerfile                 # Image for serving API
-│   ├── requirements.txt           # All runtime + dev deps (pinned versions)
-│   ├── test_app.py                # pytest tests for the API
-│   ├── train.py                   # Training pipeline + MLflow logging
-│   ├── xgb_attrition_pipeline.joblib  # Trained model (artifact)
+│   ├── ci-cd.yml                       # github workflow definition for ci-cd part
+│   ├── train.yml                       # github workflow definition for training
+├── attrition/
+│   ├── app.py                          # FastAPI application (single-row & CSV prediction)
+│   ├── Dockerfile                      # Image for serving API
+│   ├── requirements.txt                # All runtime + dev deps (pinned versions)
+│   ├── test_app.py                     # pytest tests for the API
+│   ├── train.py                        # Training pipeline + MLflow logging
+│   ├── xgb_attrition_pipeline.joblib   # Trained model (artifact)
 │
 ├── configs/
-│   └── train.yaml                 # Central config: data paths, model params, MLflow settings
+│   └── train.yaml                      # Central config: data paths, model params, MLflow settings
 │
 ├── data/
 │   ├── IBM_HR-Employee-Attrition.csv   # Company-level HR data
 │   └── Industry Dataset.csv            # Industry data (filtered to Technology sector)
 │
 ├── .gitignore
+├── architecture_diagram.png
 └── README.md
